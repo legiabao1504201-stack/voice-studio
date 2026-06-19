@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+models/
+output/
+voices/
+voices.json
+api_keys.json
+*.wav
+*.mp3
+.git/

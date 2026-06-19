@@ -1,0 +1,25 @@
+# Moi truong & cache
+.venv/
+__pycache__/
+*.pyc
+
+# Model lon (tai tu HuggingFace, KHONG commit)
+models/
+
+# Du lieu nguoi dung & bi mat (KHONG commit)
+api_keys.json
+voices/
+voices.json
+output/
+*.wav
+*.mp3
+ref_sample.wav
+
+# Tam / nen
+_body.json
+*.rar
+*.zip
+
+# He thong
+.DS_Store
+Thumbs.db

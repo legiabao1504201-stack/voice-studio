@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Studio</title>
+<style>
+  :root { --bg:#fff; --fg:#111; --muted:#888; --line:#e5e5e5; --accent:#2563eb; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f6f7f9; color:var(--fg);
+         font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width:680px; margin:24px auto; background:#fff; border:1px solid var(--line);
+          border-radius:14px; padding:24px; }
+  h1 { margin:0 0 2px; font-size:24px; }
+  .sub { color:var(--muted); margin-bottom:18px; font-size:13px; }
+  label { font-weight:600; font-size:14px; display:block; margin:14px 0 6px; }
+  textarea, input[type=text], input[type=password], select {
+    width:100%; padding:10px; border:1px solid var(--line); border-radius:8px;
+    font-size:14px; font-family:inherit; background:#fff; }
+  textarea { height:120px; resize:vertical; }
+  .row { display:flex; align-items:center; justify-content:space-between; }
+  .num { width:78px; text-align:center; padding:6px; border:1px solid var(--line);
+         border-radius:6px; font-size:13px; }
+  input[type=range] { width:100%; accent-color:var(--accent); margin:6px 0 0; }
+  .ends { display:flex; justify-content:space-between; color:var(--muted); font-size:11px; }
+  .btn { width:100%; padding:13px; border:0; border-radius:9px; background:var(--accent);
+         color:#fff; font-size:16px; font-weight:700; cursor:pointer; margin-top:18px; }
+  .btn:disabled { background:#9bb4e8; cursor:default; }
+  .btn.sec { background:#eef0f3; color:#111; font-weight:600; padding:9px; }
+  .files { display:flex; gap:8px; align-items:center; }
+  .files .btn.sec { width:auto; margin:0; }
+  audio { width:100%; margin-top:14px; }
+  .status { margin-top:12px; font-size:12px; color:var(--muted); white-space:pre-wrap;
+            min-height:18px; }
+  .err { color:#c0392b; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  details { margin-top:10px; }
+  summary { cursor:pointer; font-size:13px; color:var(--muted); }
+  .keyrow { display:flex; gap:8px; }
+  .keyrow input { flex:1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Voice Studio</h1>
+  <div class="sub">Tao giong noi offline (viXTTS) — qua API tren may ban</div>
+
+  <details>
+    <summary>⚙️ API Key & ket noi (bam de mo)</summary>
+    <label>API Key</label>
+    <div class="keyrow">
+      <input type="password" id="apikey" placeholder="vs_...">
+      <button class="btn sec" onclick="saveKey()">Luu</button>
+    </div>
+    <div class="sub" style="margin-top:6px">Key luu trong trinh duyet nay. Tao key: <code>python manage_keys.py create</code></div>
+  </details>
+
+  <label>Noi dung can doc</label>
+  <textarea id="text">Xin chào, đây là giọng nói được tạo trên máy của bạn qua API.</textarea>
+
+  <label>Giong mau</label>
+  <div class="files">
+    <select id="voice"><option value="">-- chọn giọng đã lưu --</option></select>
+    <button class="btn sec" onclick="document.getElementById('voicefile').click()">Tải lên</button>
+    <input type="file" id="voicefile" accept="audio/*" style="display:none" onchange="uploadVoice()">
+  </div>
+
+  <label class="row"><span>Speed</span><input class="num" id="speed_n" value="1.00"></label>
+  <input type="range" id="speed" min="0.70" max="1.20" step="0.01" value="1.00">
+  <div class="ends"><span>Slower (0.70)</span><span>Faster (1.20)</span></div>
+
+  <label class="row"><span>Stability</span><input class="num" id="stability_n" value="50%"></label>
+  <input type="range" id="stability" min="0" max="100" step="1" value="50">
+  <div class="ends"><span>More variable</span><span>More stable</span></div>
+
+  <label class="row"><span>Similarity</span><input class="num" id="similarity_n" value="85%"></label>
+  <input type="range" id="similarity" min="0" max="100" step="1" value="85">
+  <div class="ends"><span>Low</span><span>High</span></div>
+
+  <label class="row"><span>Style Exaggeration</span><input class="num" id="style_n" value="0%"></label>
+  <input type="range" id="style" min="0" max="100" step="1" value="0">
+  <div class="ends"><span>None</span><span>Exaggerated</span></div>
+
+  <div class="grid2">
+    <div>
+      <label>Ngôn ngữ (Language)</label>
+      <select id="language"></select>
+    </div>
+    <div>
+      <label>Output Format</label>
+      <select id="format">
+        <option value="mp3_44100_128">MP3 44.1kHz (128kbps)</option>
+        <option value="mp3_44100_192">MP3 44.1kHz (192kbps)</option>
+        <option value="wav">WAV 24kHz</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="btn" id="gen" onclick="generate()">🎙 Tạo giọng nói</button>
+  <audio id="player" controls style="display:none"></audio>
+  <a id="dl" style="display:none"></a>
+  <div class="status" id="status"></div>
+</div>
+
+<script>
+const API = location.origin;
+function key() { return localStorage.getItem("vs_key") || ""; }
+function saveKey() {
+  localStorage.setItem("vs_key", document.getElementById("apikey").value.trim());
+  setStatus("Da luu API key.");
+}
+function headers(json) {
+  const h = { "Authorization": "Bearer " + key() };
+  if (json) h["Content-Type"] = "application/json";
+  return h;
+}
+function setStatus(msg, err) {
+  const s = document.getElementById("status");
+  s.textContent = msg; s.className = "status" + (err ? " err" : "");
+}
+
+// dong bo thanh truot <-> o so
+function bindSlider(id, isSpeed) {
+  const s = document.getElementById(id), n = document.getElementById(id + "_n");
+  const fmt = v => isSpeed ? Number(v).toFixed(2) : Math.round(v) + "%";
+  s.addEventListener("input", () => n.value = fmt(s.value));
+  n.addEventListener("change", () => {
+    let v = parseFloat(String(n.value).replace("%", "").replace(",", "."));
+    if (isNaN(v)) v = parseFloat(s.value);
+    v = Math.max(parseFloat(s.min), Math.min(parseFloat(s.max), v));
+    s.value = v; n.value = fmt(v);
+  });
+}
+["speed"].forEach(id => bindSlider(id, true));
+["stability", "similarity", "style"].forEach(id => bindSlider(id, false));
+
+async function loadLanguages() {
+  try {
+    const r = await fetch(API + "/v1/languages");
+    const d = await r.json();
+    const sel = document.getElementById("language");
+    d.languages.forEach(l => {
+      const o = document.createElement("option");
+      o.value = l.code; o.textContent = l.name; sel.appendChild(o);
+    });
+    sel.value = "vi";
+  } catch (e) { setStatus("Khong ket noi duoc server.", true); }
+}
+async function loadVoices() {
+  if (!key()) return;
+  try {
+    const r = await fetch(API + "/v1/voices", { headers: headers() });
+    if (!r.ok) return;
+    const d = await r.json();
+    const sel = document.getElementById("voice");
+    sel.innerHTML = '<option value="">-- chọn giọng đã lưu --</option>';
+    d.voices.forEach(v => {
+      const o = document.createElement("option");
+      o.value = v.voice_id; o.textContent = v.name; sel.appendChild(o);
+    });
+  } catch (e) {}
+}
+async function uploadVoice() {
+  if (!key()) { setStatus("Hay nhap API key truoc (muc ⚙️).", true); return; }
+  const f = document.getElementById("voicefile").files[0];
+  if (!f) return;
+  const name = prompt("Ten cho giong nay:", f.name.replace(/\.[^.]+$/, "")) || f.name;
+  const fd = new FormData(); fd.append("name", name); fd.append("file", f);
+  setStatus("Dang tai giong mau len...");
+  try {
+    const r = await fetch(API + "/v1/voices", { method: "POST", headers: headers(), body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || "loi");
+    await loadVoices();
+    document.getElementById("voice").value = d.voice_id;
+    setStatus("Da them giong: " + d.name);
+  } catch (e) { setStatus("Loi tai giong: " + e.message, true); }
+}
+async function generate() {
+  if (!key()) { setStatus("Hay nhap API key truoc (muc ⚙️).", true); return; }
+  const voice_id = document.getElementById("voice").value;
+  if (!voice_id) { setStatus("Hay chon hoac tai len 1 giong mau.", true); return; }
+  const body = {
+    text: document.getElementById("text").value,
+    voice_id,
+    language: document.getElementById("language").value,
+    speed: parseFloat(document.getElementById("speed").value),
+    stability: parseFloat(document.getElementById("stability").value),
+    similarity: parseFloat(document.getElementById("similarity").value),
+    style: parseFloat(document.getElementById("style").value),
+    format: document.getElementById("format").value,
+  };
+  const btn = document.getElementById("gen");
+  btn.disabled = true; btn.textContent = "Đang xử lý...";
+  setStatus("Dang sinh giong noi (lan dau co the lau vi nap model)...");
+  try {
+    const r = await fetch(API + "/v1/tts", { method: "POST", headers: headers(true), body: JSON.stringify(body) });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.detail || ("HTTP " + r.status)); }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const p = document.getElementById("player");
+    p.src = url; p.style.display = "block"; p.play();
+    const dl = document.getElementById("dl");
+    dl.href = url; dl.download = "voice." + (body.format === "wav" ? "wav" : "mp3");
+    dl.style.display = "inline"; dl.textContent = "⬇ Tải file";
+    setStatus("Xong!");
+  } catch (e) { setStatus("Loi: " + e.message, true); }
+  finally { btn.disabled = false; btn.textContent = "🎙 Tạo giọng nói"; }
+}
+
+document.getElementById("apikey").value = key();
+loadLanguages(); loadVoices();
+</script>
+</body>
+</html>

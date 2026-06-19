@@ -1,0 +1,24 @@
+# Engine giong noi (fork duoc bao tri cua Coqui TTS)
+coqui-tts>=0.24.1
+
+# Tai model tu HuggingFace
+huggingface_hub>=0.23
+
+# Giao dien
+customtkinter>=5.2.2
+
+# Tien ich
+numpy<2.0
+soundfile>=0.12
+
+# coqui-tts chua tuong thich transformers 5.x (thieu isin_mps_friendly)
+# -> ghim ve 4.x
+transformers>=4.45,<5.0
+
+# Web server + REST API
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+
+# Luu y: torch + torchaudio (ban CUDA) duoc cai rieng trong install.bat
+# de dung dung phien ban GPU cho RTX 3060.
