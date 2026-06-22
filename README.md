@@ -53,11 +53,16 @@ Chi tiết ánh xạ nằm trong hàm `map_sliders_to_params` ở [engine.py](en
 
 Ngoài app desktop, dự án còn có **server** để dùng qua trình duyệt và để **app khác gọi vào bằng API key** (giống ElevenLabs/OpenAI).
 
-### Chạy server
+### Chạy nhanh nhất (1 cú nháy đúp)
+Nháy đúp **`start_all.bat`** → tự bật **cả server lẫn đường hầm internet**, in địa chỉ công khai ra màn hình và lưu vào `current_url.txt`. Để nguyên cửa sổ; đóng = tắt.
+
+### Hoặc chạy riêng từng phần
 1. Nháy đúp **`serve.bat`** → server chạy tại `http://localhost:8000`
    - Mở trình duyệt vào địa chỉ đó để dùng **giao diện web**.
    - Lần đầu chạy, server tự tạo 1 API key và in ra cửa sổ console — lưu lại.
 2. (Đưa ra internet) nháy đúp **`tunnel.bat`** → nhận 1 địa chỉ công khai `https://...trycloudflare.com` để app khác trên internet gọi vào.
+
+> Địa chỉ `trycloudflare.com` **đổi mỗi lần chạy lại** (bản miễn phí không tài khoản). Muốn địa chỉ cố định: dùng Cloudflare named tunnel (cần tài khoản + domain) hoặc ngrok static domain.
 
 ### Quản lý API key
 ```

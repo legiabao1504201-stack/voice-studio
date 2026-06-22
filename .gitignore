@@ -15,10 +15,12 @@ output/
 *.mp3
 ref_sample.wav
 
-# Tam / nen
+# Tam / nen / runtime
 _body.json
 *.rar
 *.zip
+current_url.txt
+cf.log
 
 # He thong
 .DS_Store
